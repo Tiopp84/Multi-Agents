@@ -1,0 +1,19 @@
+backends:
+  nine_router:
+    kind: openai_compatible
+    base_url: http://127.0.0.1:20128/v1
+    api_key_env: NINE_ROUTER_API_KEY
+    timeout: 90
+roles:
+  supervisor:
+  - backend: nine_router
+    model: ag/gemini-3.8-flash-medium
+  architect:
+  - backend: nine_router
+    model: ag/gemini-3.8-flash-medium
+  developer:
+  - backend: nine_router
+    model: ag/gemini-3.8-flash-medium
+  qa:
+  - backend: nine_router
+    model: ag/gemini-3.8-flash-medium

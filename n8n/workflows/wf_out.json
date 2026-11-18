@@ -1,0 +1,271 @@
+{
+  "name": "MAF · Telegram notifications",
+  "nodes": [
+    {
+      "id": "f0bad6c9-dfe2-46cf-aa6e-5dd71466c2ca",
+      "name": "Event webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        120
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "maf-events",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "eed5e195-77b3-439d-ae6d-188fe0d68e15"
+    },
+    {
+      "id": "0671012b-e603-4dd9-a227-c19140b54518",
+      "name": "Verify event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        230,
+        120
+      ],
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/integrations/n8n/verify",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({payload: $json.body.payload, signature: $json.headers['x-signature']}) }}",
+        "options": {
+          "timeout": 600000
+        }
+      }
+    },
+    {
+      "id": "b0504a00-a88d-4343-8609-31568fa16f38",
+      "name": "Send required",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e6c6004c-656d-4124-9d66-a494e52634ae",
+              "leftValue": "={{ $json.skip === false }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "7c9cbc51-ec4a-45d8-b8c8-e3b4e2fb3b91",
+      "name": "Has approval buttons",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        690,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ad1c382a-c1e2-4ea4-ac77-395997e42d49",
+              "leftValue": "={{ Boolean($json.gate) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "b2c26c8c-b471-4b92-9322-47801f7f9eeb",
+      "name": "Send approval",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        920,
+        0
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        },
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "={{ ['design', 'plan'].includes($json.gate) ? 'Duyệt' : 'Tiếp tục' }}",
+                    "additionalFields": {
+                      "callback_data": "={{ (['design', 'plan'].includes($json.gate) ? 'approve:' : 'continue:') + $json.event_id }}"
+                    }
+                  },
+                  {
+                    "text": "={{ ['design', 'plan'].includes($json.gate) ? 'Yêu cầu sửa' : 'Dừng' }}",
+                    "additionalFields": {
+                      "callback_data": "={{ (['design', 'plan'].includes($json.gate) ? 'reject:' : 'stop:') + $json.event_id }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "6bd9d771-d28c-4fe9-b609-4561bc7c7b8e",
+      "name": "Send notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        920,
+        230
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      }
+    },
+    {
+      "id": "a21b2581-e2c4-40b4-9937-c595248dd2b3",
+      "name": "Confirm delivery",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1150,
+        120
+      ],
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "method": "POST",
+        "url": "=http://host.docker.internal:8000/integrations/n8n/events/{{ $('Verify event').first().json.event_id }}/ack",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "timeout": 600000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Event webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify event": {
+      "main": [
+        [
+          {
+            "node": "Send required",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send required": {
+      "main": [
+        [
+          {
+            "node": "Has approval buttons",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Has approval buttons": {
+      "main": [
+        [
+          {
+            "node": "Send approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send approval": {
+      "main": [
+        [
+          {
+            "node": "Confirm delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send notification": {
+      "main": [
+        [
+          {
+            "node": "Confirm delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

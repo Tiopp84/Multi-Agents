@@ -1,0 +1,243 @@
+{
+  "name": "MAF · Telegram incoming",
+  "nodes": [
+    {
+      "id": "b13e8cce-92ca-4d8c-85c5-f37c405cabc3",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        150
+      ],
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {
+          "chatIds": "REPLACE_WITH_CHAT_ID"
+        }
+      },
+      "webhookId": "bfb9332c-47e7-4fd7-bab3-13c7b305ecb5"
+    },
+    {
+      "id": "0d5a7ad2-467a-4533-bdf1-3a3b4fcb6d8e",
+      "name": "Is callback",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        230,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "16063aa0-7378-4970-bf08-bf089b0edd22",
+              "leftValue": "={{ Boolean($json.callback_query?.message?.message_id && /^(approve|reject|continue|stop):[0-9]{1,18}$/.test($json.callback_query?.data ?? '')) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "5979e09a-f27e-4a74-acf0-a4a8e70987e5",
+      "name": "Answer callback",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        460,
+        0
+      ],
+      "parameters": {
+        "resource": "callback",
+        "operation": "answerQuery",
+        "queryId": "={{ $json.callback_query.id }}",
+        "additionalFields": {
+          "text": "Đã nhận thao tác."
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "c92bdd68-1ec6-49bf-90b9-b846cee48e2f",
+      "name": "Remove approval buttons",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        690,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "resource": "message",
+        "operation": "editMessageText",
+        "messageType": "message",
+        "chatId": "={{ $('Telegram Trigger').first().json.callback_query.message.chat.id }}",
+        "messageId": "={{ $('Telegram Trigger').first().json.callback_query.message.message_id }}",
+        "text": "={{ ($('Telegram Trigger').first().json.callback_query.message.text ?? '').slice(0, 3800).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') + '\\n\\n✓ Đã nhận thao tác.' }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": []
+        },
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      }
+    },
+    {
+      "id": "92a36453-11cc-412d-a6a1-9186b5e51804",
+      "name": "Gateway command",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        230,
+        250
+      ],
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/integrations/telegram/update",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 600000
+        }
+      }
+    },
+    {
+      "id": "9fe515fe-f944-4ac6-906a-326382fda768",
+      "name": "Reply needed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        250
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ff9a8663-b3de-4cb8-b128-cfae32446ed0",
+              "leftValue": "={{ Boolean($json.text) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "7b987668-c9ef-460e-85d4-03b62a643b57",
+      "name": "Telegram reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        690,
+        250
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML",
+          "disable_web_page_preview": true
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is callback",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gateway command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is callback": {
+      "main": [
+        [
+          {
+            "node": "Answer callback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Gateway command": {
+      "main": [
+        [
+          {
+            "node": "Reply needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply needed": {
+      "main": [
+        [
+          {
+            "node": "Telegram reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Answer callback": {
+      "main": [
+        [
+          {
+            "node": "Remove approval buttons",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

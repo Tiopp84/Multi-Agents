@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maf"
+version = "0.1.0"
+description = "LangGraph orchestration for a software development agent team"
+requires-python = ">=3.11"
+dependencies = ["langgraph>=1.0,<2", "pydantic>=2,<3", "langgraph-checkpoint-sqlite>=3,<4", "openai>=1,<4", "PyYAML>=6,<7", "python-dotenv>=1,<2", "fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+maf = ["dashboard/*.html", "dashboard/*.css", "dashboard/*.js"]

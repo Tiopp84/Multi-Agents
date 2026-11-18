@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4fa">
+  <title>Multi-Agents · Run Console</title>
+  <link rel="stylesheet" href="/dashboard/assets/main.css">
+  <script type="module" src="/dashboard/assets/main.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/dashboard"><span class="mark" aria-hidden="true">M</span><span>Multi-Agents<span class="product">RUN CONSOLE</span></span></a>
+    <div class="top-actions"><span id="connection" class="connection" role="status">Chưa kết nối</span><button id="lock" class="secondary" type="button" hidden>Khóa</button></div>
+  </header>
+  <main>
+    <section id="login" class="login panel">
+      <h1>Kết nối Gateway</h1>
+      <p>Nhập token để mở dashboard của dự án.</p>
+      <form id="login-form">
+        <label for="token">Gateway token</label>
+        <input id="token" name="token" type="password" autocomplete="off" required placeholder="MAF_GATEWAY_TOKEN">
+        <button class="primary" type="submit">Kết nối</button>
+      </form>
+      <p id="login-error" class="error" role="alert"></p>
+    </section>
+    <div id="console" hidden>
+      <div class="heading">
+        <div><h1>Tiến trình các run</h1><p>Theo dõi agent, duyệt thiết kế và xem kết quả QA.</p></div>
+        <div class="heading-actions">
+          <button id="new-project" class="secondary" type="button">+ Project mới</button>
+          <button id="configure-agents" class="secondary" type="button">Cấu hình agent</button>
+          <button id="new-run" class="primary" type="button">+ Tạo run</button>
+        </div>
+      </div>
+      <p class="notice" id="notice" role="status"></p>
+      <div class="project-scope">
+        <label for="project-filter">Project</label>
+        <select id="project-filter"><option value="all">Tất cả project</option></select>
+        <span id="project-location" class="mono muted"></span>
+      </div>
+      <div id="metrics" class="metrics" aria-label="Tổng quan run"></div>
+      <section class="panel office" aria-labelledby="office-title">
+        <div class="panel-header"><h2 id="office-title">Phòng làm việc</h2><span id="office-run" class="mono muted"></span></div>
+        <div class="office-layout">
+          <div class="office-floor">
+            <div id="stations" class="stations" aria-label="Các agent"></div>
+            <div id="handoff" class="office-handoff"></div>
+          </div>
+          <aside id="agent-detail" class="agent-detail" aria-label="Công việc của agent"></aside>
+        </div>
+      </section>
+      <div class="layout">
+        <section class="panel queue" aria-labelledby="runs-title">
+          <div class="panel-header"><h2 id="runs-title">Danh sách run</h2><span id="run-count" class="mono muted"></span></div>
+          <div class="filter">
+            <input id="search" type="search" aria-label="Tìm run" placeholder="Tìm theo yêu cầu hoặc ID">
+            <select id="filter" aria-label="Lọc trạng thái">
+              <option value="">Tất cả trạng thái</option><option value="running">Đang chạy</option>
+              <option value="waiting_approval">Chờ duyệt</option><option value="done">Hoàn tất</option>
+              <option value="planning">PM lập kế hoạch</option><option value="paused">Tạm dừng</option><option value="blocked">Cần xử lý</option><option value="failed">Lỗi</option><option value="cancelled">Đã dừng</option>
+              <option value="responded">PM đã trả lời</option><option value="needs_input">Cần làm rõ</option>
+            </select>
+          </div>
+          <div id="runs" class="runs"></div>
+        </section>
+        <section class="panel detail" aria-label="Chi tiết run">
+          <div id="details" class="details"><p class="muted">Chọn một run để xem thông tin.</p></div>
+          <div id="timeline-section" hidden>
+            <div class="panel-header timeline-header"><h2>Timeline</h2><span id="event-count" class="mono muted"></span></div>
+            <div id="timeline" class="timeline"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <dialog id="agent-dialog" class="agent-config" aria-labelledby="agent-config-title">
+    <form id="agent-form">
+      <div class="agent-config-header">
+        <h2 id="agent-config-title">Cấu hình agent</h2>
+        <button id="close-agents" type="button" class="secondary">Đóng</button>
+      </div>
+      <label for="agent-role">Vai trò</label>
+      <select id="agent-role"></select>
+      <fieldset id="agent-fields" disabled>
+        <label for="agent-rules">Rules</label>
+        <p id="agent-role-contract" class="muted"></p>
+        <textarea id="agent-rules" rows="4" maxlength="8000"></textarea>
+        <section>
+          <div class="agent-config-header"><h3>Skills</h3><button id="add-skill" type="button" class="secondary">+ Thêm skill</button></div>
+          <div id="agent-skills"></div>
+        </section>
+        <section>
+          <div class="agent-config-header"><h3>Model và fallback</h3><button id="add-route" type="button" class="secondary">+ Thêm model</button></div>
+          <div id="agent-routes"></div>
+        </section>
+        <section><h3>Công cụ</h3><div id="agent-tools"></div></section>
+      </fieldset>
+      <div class="dialog-actions">
+        <p id="agent-config-status" class="muted" role="status"></p>
+        <button id="save-agent" class="primary" type="submit" disabled>Lưu agent</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="project-dialog" aria-labelledby="project-title">
+    <form id="project-form">
+      <h2 id="project-title">Project mới</h2>
+      <label for="browse-workspace">Workspace trên máy Gateway</label>
+      <div class="project-path">
+        <button id="browse-workspace" class="secondary" type="button">Chọn thư mục…</button>
+        <output id="project-workspace" class="mono muted">Chưa chọn thư mục</output>
+      </div>
+      <label for="project-folder">Tạo thư mục con (tùy chọn)</label>
+      <input id="project-folder" maxlength="120" placeholder="Để trống để dùng thư mục đã chọn">
+      <label for="project-name">Tên project</label>
+      <input id="project-name" required maxlength="120">
+      <label for="project-brief">Mô tả và mục tiêu</label>
+      <textarea id="project-brief" rows="3" maxlength="4000"></textarea>
+      <p id="project-status" class="muted" role="status"></p>
+      <div class="dialog-actions">
+        <button id="cancel-project" type="button" class="secondary">Hủy</button>
+        <button id="save-project" type="submit" class="primary" disabled>Tạo project</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="run-dialog">
+    <form id="run-form" method="dialog">
+      <h2>Tạo run</h2>
+      <label for="run-project">Project</label>
+      <select id="run-project" required></select>
+      <label for="request">PRD / yêu cầu cho PM</label>
+      <textarea id="request" rows="5" required placeholder="Ví dụ: Viết hàm Python cộng hai số nguyên"></textarea>
+      <label for="run-calls">Ngân sách lượt gọi model</label>
+      <input id="run-calls" type="number" min="10" max="2000" value="200" required>
+      <label for="run-rate">Tối đa lượt gọi mỗi phút</label>
+      <input id="run-rate" type="number" min="1" max="60" value="6" required>
+      <div class="dialog-actions"><button id="cancel-run" class="secondary" type="button">Hủy</button><button class="primary" type="submit">Chạy</button></div>
+    </form>
+  </dialog>
+</body>
+</html>
